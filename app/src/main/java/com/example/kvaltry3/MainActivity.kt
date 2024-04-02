@@ -46,13 +46,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val usersDB = Room.databaseBuilder(
+                    val db = Room.databaseBuilder(
                         context = LocalContext.current.applicationContext,
                         klass = UserDatabase::class.java,
                         name = "user-database"
                     ).allowMainThreadQueries().build()
 
-                    LoginScreen(usersDB = usersDB)
+                    LoginScreen(db = db)
                 }
             }
         }
@@ -75,38 +75,37 @@ data class User(
 }
 
 @Composable
-fun MainScreen(){
-
-    val itemsDB = Room.databaseBuilder(
-        context = LocalContext.current.applicationContext,
-        klass = ItemDatabase::class.java,
-        name = "item-database"
-    ).allowMainThreadQueries().build()
+fun MainScreen(db: ItemsDAO, user: User) {
 
     var showAddItemDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(10.dp)) {
-        Button(onClick = {
-            showAddItemDialog = true
-        }) {
-            Text("Add new item")
-        }
+        Text(text = "User: " + user.email)
+
+            Button(onClick = {
+                showAddItemDialog = true
+            }) {
+                Text("Add new item")
+            }
+
+
         if (showAddItemDialog) {
-            AddItemDialog(itemsDB) {
+            AddItemDialog(db) {
                 showAddItemDialog = false
             }
         }
-        ShowList(items = itemsDB)
+
+        ShowList(db)
     }
 }
 
 @Composable
-fun ShowList(items: ItemDatabase) {
-
-    var list by remember { mutableStateOf(items.itemsDAO.getAllItems()) }
-    list = items.itemsDAO.getAllItems()
-
+fun ShowList(db: ItemsDAO) {
     val scope = CoroutineScope(Dispatchers.IO)
+
+    var list by remember { mutableStateOf(db.getAllItems()) }
+        list = db.getAllItems()
+
     LazyColumn {
         items(list) { item ->
             Box(modifier = Modifier
@@ -120,8 +119,8 @@ fun ShowList(items: ItemDatabase) {
                     Text(item.name)
                     Button(onClick = {
                         scope.launch {
-                            items.itemsDAO.delete(item)
-                            list = items.itemsDAO.getAllItems()
+                            db.delete(item)
+                            list = db.getAllItems()
                         }
                     }) {
                         Text("Remove")
@@ -133,7 +132,7 @@ fun ShowList(items: ItemDatabase) {
 }
 
 @Composable
-fun AddItemDialog(list: ItemDatabase, onDismiss: () -> Unit) {
+fun AddItemDialog(db: ItemsDAO, onDismiss: () -> Unit) {
     val scope = CoroutineScope(Dispatchers.IO)
     var name by remember { mutableStateOf("") }
     var id by remember { mutableStateOf("") }
@@ -159,7 +158,7 @@ fun AddItemDialog(list: ItemDatabase, onDismiss: () -> Unit) {
             TextButton(onClick = {
                 val newId = id.toIntOrNull() ?: 0
                 scope.launch {
-                    list.itemsDAO.insert(Item(newId, name))
+                    db.insert(Item(newId, name))
                 }
                 name = ""
                 id = ""
@@ -177,7 +176,7 @@ fun AddItemDialog(list: ItemDatabase, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun LoginScreen(usersDB: UserDatabase) {
+fun LoginScreen(db: UserDatabase) {
     val scope = CoroutineScope(Dispatchers.IO)
 
     var showLoginScreen by remember { mutableStateOf(true) }
@@ -200,7 +199,7 @@ fun LoginScreen(usersDB: UserDatabase) {
 
             Row {
                 Button(onClick = {
-                    if (usersDB.usersDAO.getAllUsers().any { it.email == email && it.password == password }) {
+                    if (db.usersDAO.getAllUsers().any { it.email == email && it.password == password }) {
                         showLoginScreen = false
                         message = ""
                     }
@@ -216,12 +215,12 @@ fun LoginScreen(usersDB: UserDatabase) {
                     if (email.isNullOrEmpty() || password.isNullOrEmpty()) {
                         message = "Email or Password is empty"
                     }
-                    if (usersDB.usersDAO.getAllUsers().any { it.email == email && it.password == password }) {
+                    if (db.usersDAO.getAllUsers().any { it.email == email && it.password == password }) {
                         message = "User already exists"
                     }
-                    if (!usersDB.usersDAO.getAllUsers().any { it.email == email && it.password == password } && !email.isNullOrEmpty() && !password.isNullOrEmpty()) {
+                    if (!db.usersDAO.getAllUsers().any { it.email == email && it.password == password } && !email.isNullOrEmpty() && !password.isNullOrEmpty()) {
                         scope.launch {
-                            usersDB.usersDAO.insert(User(email, password))
+                            db.usersDAO.insert(User(email, password))
                             message = "Success"
                         }
                     }
@@ -233,7 +232,7 @@ fun LoginScreen(usersDB: UserDatabase) {
             Text(text = message)
         }
         if (!showLoginScreen) {
-            MainScreen()
+            MainScreen(db.itemsDAO, User(email, password))
         }
     }
 }
