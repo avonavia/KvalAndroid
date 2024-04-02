@@ -114,9 +114,11 @@ fun ShowList(db: ItemsDAO) {
                 .border(2.dp, Color.Black, RectangleShape)){
                 Column(modifier = Modifier
                     .fillMaxWidth()
-                    .padding(10.dp)) {
+                    .padding(20.dp)) {
+
                     Text(item.id.toString())
                     Text(item.name)
+
                     Button(onClick = {
                         scope.launch {
                             db.delete(item)
@@ -125,6 +127,7 @@ fun ShowList(db: ItemsDAO) {
                     }) {
                         Text("Remove")
                     }
+
                 }
             }
         }
@@ -160,8 +163,6 @@ fun AddItemDialog(db: ItemsDAO, onDismiss: () -> Unit) {
                 scope.launch {
                     db.insert(Item(newId, name))
                 }
-                name = ""
-                id = ""
                 onDismiss()
             }) {
                 Text("Add")
