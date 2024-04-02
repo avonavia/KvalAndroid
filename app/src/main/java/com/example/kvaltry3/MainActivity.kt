@@ -3,6 +3,7 @@ package com.example.kvaltry3
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +21,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults.indicatorLine
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.Room
@@ -111,13 +117,23 @@ fun ShowList(db: ItemsDAO) {
             Box(modifier = Modifier
                 .padding(10.dp)
                 .fillMaxWidth()
-                .border(2.dp, Color.Black, RectangleShape)){
+                .border(1.dp, Color.DarkGray, CutCornerShape(10.dp))
+                .background(Color.LightGray, CutCornerShape(10.dp))
+            ){
                 Column(modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)) {
 
-                    Text(item.id.toString())
-                    Text(item.name)
+                    Text("ID:" + item.id.toString(),
+                        fontFamily = FontFamily.Default,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                    Text("Name:" + item.name,
+                        fontFamily = FontFamily.Default,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
 
                     Button(onClick = {
                         scope.launch {
