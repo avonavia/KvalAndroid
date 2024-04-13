@@ -8,11 +8,12 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RoomDatabase
 
-@Database(entities = [User::class, Item::class], version = 1)
+@Database(entities = [User::class, Item::class, Flight::class], version = 1)
 abstract class UserDatabase : RoomDatabase() {
 
     abstract val usersDAO: UsersDAO
     abstract val itemsDAO: ItemsDAO
+    abstract val flightsDAO: FlightsDAO
 }
 
 @Dao
@@ -38,4 +39,16 @@ interface ItemsDAO {
 
     @Query("SELECT * FROM item")
     fun getAllItems(): List<Item>
+}
+
+@Dao
+interface FlightsDAO {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(flight: Flight)
+
+    @Delete
+    suspend fun delete(flight: Flight)
+
+    @Query("SELECT * FROM flight")
+    fun getAllFlights(): List<Flight>
 }
