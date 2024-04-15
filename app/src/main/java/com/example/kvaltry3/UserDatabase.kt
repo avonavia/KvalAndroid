@@ -7,13 +7,14 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import androidx.room.Update
 
-@Database(entities = [User::class, Item::class, Flight::class], version = 1)
+@Database(entities = [User::class, Flight::class, UserMarkedFlight::class], version = 1)
 abstract class UserDatabase : RoomDatabase() {
 
     abstract val usersDAO: UsersDAO
-    abstract val itemsDAO: ItemsDAO
     abstract val flightsDAO: FlightsDAO
+    abstract val userMarkedFlightsDAO: UserMarkedFlightsDAO
 }
 
 @Dao
@@ -30,18 +31,6 @@ interface UsersDAO {
 }
 
 @Dao
-interface ItemsDAO {
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(item: Item)
-
-    @Delete
-    suspend fun delete(item: Item)
-
-    @Query("SELECT * FROM item")
-    fun getAllItems(): List<Item>
-}
-
-@Dao
 interface FlightsDAO {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(flight: Flight)
@@ -51,4 +40,19 @@ interface FlightsDAO {
 
     @Query("SELECT * FROM flight")
     fun getAllFlights(): List<Flight>
+}
+
+@Dao
+interface UserMarkedFlightsDAO {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(userMarkedFlight: UserMarkedFlight)
+
+    @Query("DELETE FROM usermarkedflight WHERE searchToken = :token AND userId = :userId")
+    fun removeMarkedFlight(userId: Int, token: String)
+
+    @Query("SELECT searchToken FROM usermarkedflight WHERE userId = :id")
+    fun getMarkedFlights(id: Int): List<String>
+
+    @Query("SELECT COUNT(*) FROM usermarkedflight WHERE userId = :userId AND searchToken = :token")
+    fun checkIfMarked(userId: Int, token: String): Int
 }

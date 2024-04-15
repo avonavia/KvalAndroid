@@ -14,19 +14,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CutCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -34,14 +35,16 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+import androidx.lifecycle.ViewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import androidx.room.Room
 import com.example.kvaltry3.ui.theme.KvalTry3Theme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
@@ -77,9 +80,42 @@ class MainActivity : ComponentActivity() {
                                 }
                         }
 
-                    LoginScreen(db = db)
+                    val userViewModel = UserViewModel()
+
+                    MainNavHost(db = db, userViewModel = userViewModel)
                 }
             }
+        }
+    }
+}
+
+class UserViewModel : ViewModel() {
+    private val _user = mutableStateOf<User?>(null)
+    val user: State<User?> = _user
+
+    fun setUser(user: User) {
+        _user.value = user
+    }
+}
+
+@Composable
+fun MainNavHost(
+    modifier: Modifier = Modifier,
+    navController: NavHostController = rememberNavController(),
+    startDestination: String = "loginScreen",
+    db: UserDatabase,
+    userViewModel: UserViewModel
+) {
+    NavHost(
+        modifier = modifier,
+        navController = navController,
+        startDestination = startDestination
+    ) {
+        composable("loginScreen") {
+            LoginScreen(db, navController, userViewModel)
+        }
+        composable("mainScreen") {
+            MainScreen(db, navController, userViewModel)
         }
     }
 }
@@ -89,75 +125,50 @@ fun parseJson(jsonString: String): JsonResponse {
     return json.decodeFromString<JsonResponse>(jsonString)
 }
 
-@Serializable
-@Entity
-data class Flight(
-    var startCity: String,
-    var startCityCode: String,
-    var endCity: String,
-    var endCityCode: String,
-    var startDate: String,
-    var endDate: String,
-    var price: Int,
-    @PrimaryKey
-    var searchToken: String
-)
-
-@Serializable
-class Meta
-
-@Serializable
-data class JsonResponse(
-    val meta: Meta,
-    val data: List<Flight>
-)
-
-@Entity
-data class Item(
-    @PrimaryKey
-    var id: Int,
-    var name: String
-)
-
-@Entity
-data class User(
-    var email: String,
-    var password: String
-){
-    @PrimaryKey(autoGenerate = true) var id: Int = 0
-}
-
 @Composable
-fun MainScreen(db: FlightsDAO, user: User) {
+fun MainScreen(db: UserDatabase, navController: NavHostController, userViewModel: UserViewModel) {
 
-    var showAddItemDialog by remember { mutableStateOf(false) }
+    val currentUser = userViewModel.user.value
+
+    var onlyShowMarked by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(10.dp)) {
-        Text(text = "User: " + user.email)
+        Text(text = "User: " + (currentUser?.email ?: ""))
 
-            Button(onClick = {
-                showAddItemDialog = true
-            }) {
-                Text("Add new item")
-            }
-
-
-        if (showAddItemDialog) {
-            AddItemDialog(db) {
-                showAddItemDialog = false
-            }
+        Button(onClick = { navController.navigate("loginScreen") }) {
+            Text(text = "LogOut")
         }
 
-        ShowList(db)
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(checked = onlyShowMarked, onCheckedChange = {
+                onlyShowMarked = !onlyShowMarked
+            })
+            Text(text = "Only show selected")
+        }
+
+        ShowList(db, currentUser, onlyShowMarked)
     }
 }
 
 @Composable
-fun ShowList(db: FlightsDAO) {
+fun ShowList(db: UserDatabase, currentUser: User?, onlyMarked: Boolean) {
     val scope = CoroutineScope(Dispatchers.IO)
 
-    var list by remember { mutableStateOf(db.getAllFlights()) }
-        list = db.getAllFlights()
+    val flightsDAO = db.flightsDAO
+    val userMarkedFlightsDAO = db.userMarkedFlightsDAO
+
+    var list by remember { mutableStateOf(flightsDAO.getAllFlights()) }
+    val currentUserId by remember { mutableIntStateOf(currentUser!!.id) }
+
+    var markedFlights = userMarkedFlightsDAO.getMarkedFlights(currentUserId)
+
+    if (onlyMarked) {
+        list = flightsDAO.getAllFlights().filter { markedFlights.contains(it.searchToken) }
+    } else {
+        list = flightsDAO.getAllFlights()
+    }
 
     LazyColumn {
         items(list) { item ->
@@ -204,15 +215,32 @@ fun ShowList(db: FlightsDAO) {
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp)
 
-                    Button(onClick = {
-                        scope.launch {
-                            db.delete(item)
-                            list = db.getAllFlights()
-                        }
-                    }) {
-                        Text("Remove")
-                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
 
+                        Checkbox(
+                            checked = (userMarkedFlightsDAO.checkIfMarked(currentUserId, item.searchToken) > 0),
+                            onCheckedChange = {
+                                scope.launch {
+                                    if (userMarkedFlightsDAO.checkIfMarked(currentUserId, item.searchToken) == 0) {
+                                        userMarkedFlightsDAO.insert(UserMarkedFlight(currentUserId, item.searchToken))
+                                        markedFlights = userMarkedFlightsDAO.getMarkedFlights(currentUserId)
+                                    } else {
+                                        userMarkedFlightsDAO.removeMarkedFlight(currentUserId, item.searchToken)
+                                        markedFlights = userMarkedFlightsDAO.getMarkedFlights(currentUserId)
+                                    }
+
+                                    if (onlyMarked) {
+                                        list = flightsDAO.getAllFlights().filter { markedFlights.contains(it.searchToken) }
+                                    } else {
+                                        list = flightsDAO.getAllFlights()
+                                    }
+                                }
+                            }
+                        )
+                        Text("Selected")
+                    }
                 }
             }
         }
@@ -220,92 +248,8 @@ fun ShowList(db: FlightsDAO) {
 }
 
 @Composable
-fun AddItemDialog(db: FlightsDAO, onDismiss: () -> Unit) {
-    val scope = CoroutineScope(Dispatchers.IO)
+fun LoginScreen(db: UserDatabase, navController: NavHostController, userViewModel: UserViewModel) {
 
-    var startCity by remember { mutableStateOf("") }
-    var startCityCode by remember { mutableStateOf("") }
-    var endCity by remember { mutableStateOf("") }
-    var endCityCode by remember { mutableStateOf("") }
-    var startDate by remember { mutableStateOf("") }
-    var endDate by remember { mutableStateOf("") }
-    var price by remember { mutableIntStateOf(0) }
-    var searchToken by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add new item") },
-        text = {
-            Column(modifier = Modifier.padding(8.dp)) {
-                TextField(
-                    value = startCity,
-                    onValueChange = { startCity = it },
-                    label = { Text("Start City") }
-                )
-                TextField(
-                    value = startCityCode,
-                    onValueChange = { startCityCode = it },
-                    label = { Text("Start City Code") }
-                )
-                TextField(
-                    value = endCity,
-                    onValueChange = { endCity = it },
-                    label = { Text("End City") }
-                )
-                TextField(
-                    value = endCityCode,
-                    onValueChange = { endCityCode = it },
-                    label = { Text("End City Code") }
-                )
-                TextField(
-                    value = startDate,
-                    onValueChange = { startDate = it },
-                    label = { Text("Start Date") }
-                )
-                TextField(
-                    value = endDate,
-                    onValueChange = { endDate = it },
-                    label = { Text("End Date") }
-                )
-                TextField(
-                    value = price.toString(),
-                    onValueChange = {
-                        val newPrice = it
-                        price = newPrice.toIntOrNull() ?: 0
-                    },
-                    label = { Text("Price") }
-                )
-                TextField(
-                    value = searchToken,
-                    onValueChange = { searchToken = it },
-                    label = { Text("Search Token") }
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val flightToAdd = Flight(startCity, startCityCode, endCity, endCityCode, startDate, endDate, price, searchToken)
-
-                scope.launch {
-                    db.insert(flightToAdd)
-                }
-
-                onDismiss()
-
-            }) {
-                Text("Add")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun LoginScreen(db: UserDatabase) {
     val scope = CoroutineScope(Dispatchers.IO)
 
     var showLoginScreen by remember { mutableStateOf(true) }
@@ -361,7 +305,11 @@ fun LoginScreen(db: UserDatabase) {
             Text(text = message)
         }
         if (!showLoginScreen) {
-            MainScreen(db.flightsDAO, User(email, password))
+            val user = db.usersDAO.getAllUsers().firstOrNull {
+               it.email == email && it.password == password
+            }
+            userViewModel.setUser(user!!)
+            navController.navigate("mainScreen")
         }
     }
 }
