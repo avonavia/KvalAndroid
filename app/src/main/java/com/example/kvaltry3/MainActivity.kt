@@ -162,7 +162,7 @@ fun ShowList(db: UserDatabase, currentUser: User?, onlyMarked: Boolean) {
     var list by remember { mutableStateOf(flightsDAO.getAllFlights()) }
     val currentUserId by remember { mutableIntStateOf(currentUser!!.id) }
 
-    var markedFlights = userMarkedFlightsDAO.getMarkedFlights(currentUserId)
+    var markedFlights by remember { mutableStateOf(userMarkedFlightsDAO.getMarkedFlights(currentUserId)) }
 
     if (onlyMarked) {
         list = flightsDAO.getAllFlights().filter { markedFlights.contains(it.searchToken) }
@@ -220,22 +220,21 @@ fun ShowList(db: UserDatabase, currentUser: User?, onlyMarked: Boolean) {
                     ) {
 
                         Checkbox(
-                            checked = (userMarkedFlightsDAO.checkIfMarked(currentUserId, item.searchToken) > 0),
+                            checked = markedFlights.contains(item.searchToken),
                             onCheckedChange = {
                                 scope.launch {
                                     if (userMarkedFlightsDAO.checkIfMarked(currentUserId, item.searchToken) == 0) {
                                         userMarkedFlightsDAO.insert(UserMarkedFlight(currentUserId, item.searchToken))
-                                        markedFlights = userMarkedFlightsDAO.getMarkedFlights(currentUserId)
                                     } else {
                                         userMarkedFlightsDAO.removeMarkedFlight(currentUserId, item.searchToken)
-                                        markedFlights = userMarkedFlightsDAO.getMarkedFlights(currentUserId)
                                     }
+                                    markedFlights = userMarkedFlightsDAO.getMarkedFlights(currentUserId)
+                                }
 
-                                    if (onlyMarked) {
-                                        list = flightsDAO.getAllFlights().filter { markedFlights.contains(it.searchToken) }
-                                    } else {
-                                        list = flightsDAO.getAllFlights()
-                                    }
+                                if (onlyMarked) {
+                                    list = flightsDAO.getAllFlights().filter { markedFlights.contains(it.searchToken) }
+                                } else {
+                                    list = flightsDAO.getAllFlights()
                                 }
                             }
                         )
