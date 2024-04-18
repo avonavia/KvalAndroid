@@ -100,14 +100,12 @@ class UserViewModel : ViewModel() {
 
 @Composable
 fun MainNavHost(
-    modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     startDestination: String = "loginScreen",
     db: UserDatabase,
     userViewModel: UserViewModel
 ) {
     NavHost(
-        modifier = modifier,
         navController = navController,
         startDestination = startDestination
     ) {
