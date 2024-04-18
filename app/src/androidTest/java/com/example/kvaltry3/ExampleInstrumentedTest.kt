@@ -28,7 +28,6 @@ import org.junit.Rule
 class ExampleInstrumentedTest {
     @Test
     fun useAppContext() {
-        // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         assertEquals("com.example.kvaltry3", appContext.packageName)
     }

@@ -2,10 +2,8 @@ package com.example.kvaltry3
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import kotlinx.serialization.Serializable
 
 
-@Serializable
 @Entity
 data class Flight(
     var startCity: String,
@@ -18,13 +16,11 @@ data class Flight(
     @PrimaryKey
     var searchToken: String
 )
-@Serializable
 class Meta
 
-@Serializable
 data class JsonResponse(
-    val meta: Meta,
-    val data: List<Flight>
+    var meta: Meta,
+    var data: List<Flight>
 )
 
 @Entity

@@ -43,11 +43,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.room.Room
 import com.example.kvaltry3.ui.theme.KvalTry3Theme
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 
 
 class MainActivity : ComponentActivity() {
@@ -122,8 +121,7 @@ fun MainNavHost(
 }
 
 fun parseJson(jsonString: String): JsonResponse {
-    val json = Json { ignoreUnknownKeys = true }
-    return json.decodeFromString<JsonResponse>(jsonString)
+    return Gson().fromJson(jsonString, JsonResponse::class.java)
 }
 
 @Composable
