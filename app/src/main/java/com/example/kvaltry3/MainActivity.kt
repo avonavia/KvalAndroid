@@ -172,8 +172,8 @@ fun ShowList(db: UserDatabase, currentUser: User?, onlyMarked: Boolean) {
             Box(modifier = Modifier
                 .padding(10.dp)
                 .fillMaxWidth()
-                .border(1.dp, Color.DarkGray, CutCornerShape(10.dp))
-                .background(Color.LightGray, CutCornerShape(10.dp))
+                .border(1.dp, Color.Black, CutCornerShape(10.dp))
+                .background(Color.DarkGray, CutCornerShape(10.dp))
             ){
                 Column(modifier = Modifier
                     .fillMaxWidth()
