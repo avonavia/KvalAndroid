@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -261,16 +262,20 @@ fun LoginScreen(db: UserDatabase, navController: NavHostController, userViewMode
             TextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") }
+                label = { Text("Email") },
+                modifier = Modifier.testTag("EMAIL")
             )
             TextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") }
+                label = { Text("Password") },
+                modifier = Modifier.testTag("PASSWORD")
             )
 
             Row {
-                Button(onClick = {
+                Button(
+                    modifier = Modifier.testTag("LOGIN"),
+                    onClick = {
                     if (db.usersDAO.getAllUsers().any { it.email == email && it.password == password }) {
                         showLoginScreen = false
                         message = ""
@@ -301,7 +306,7 @@ fun LoginScreen(db: UserDatabase, navController: NavHostController, userViewMode
                 }
             }
 
-            Text(text = message)
+            Text(modifier = Modifier.testTag("MESSAGE"), text = message)
         }
         if (!showLoginScreen) {
             val user = db.usersDAO.getAllUsers().firstOrNull {
